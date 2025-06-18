@@ -19,49 +19,26 @@ pip install znote
 
 ## Usage
 
-### Define a Note
-
 ```python
-from znote import zNote
+>>> from znote import zNote, subscribe
+>>> class MyNote(zNote):
+...     message: str
+>>> @subscribe(MyNote)
+... def print_handler(note, payload, context):
+...     print(f"Decorator: {note.message}, payload={payload}, context={context}")
+>>> def direct_handler(note, payload, context):
+...     print(f"Direct: {note.message}, payload={payload}, context={context}")
+>>> _ = subscribe(MyNote)(direct_handler)
+>>> @subscribe(MyNote, lambda note, payload, context: payload.get('important', False))
+... def important_handler(note, payload, context):
+...     print("Important note received!")
+>>> note = MyNote(message="Hello world")
+>>> import asyncio
+>>> asyncio.run(note.dispatch(important=True, context={"user": "alice"}))
+Decorator: Hello world, payload={'important': True}, context={'user': 'alice'}
+Direct: Hello world, payload={'important': True}, context={'user': 'alice'}
+Important note received!
 
-class MyNote(zNote):
-    message: str
-```
-
-### Subscribe Handlers
-
-You can subscribe handlers using either the decorator or the direct method:
-
-```python
-from znote import subscribe
-
-# Decorator style
-@subscribe(MyNote)
-def print_handler(note, payload, context):
-    print(f"Decorator: {note.message}, payload={payload}, context={context}")
-
-# Direct style
-def direct_handler(note, payload, context):
-    print(f"Direct: {note.message}, payload={payload}, context={context}")
-
-subscribe(MyNote)(direct_handler)
-```
-
-### Filtered Subscriptions
-
-```python
-@subscribe(MyNote, lambda note, payload, context: payload.get('important', False))
-def important_handler(note, payload, context):
-    print("Important note received!")
-```
-
-### Dispatching Notes
-
-```python
-import asyncio
-
-note = MyNote(message="Hello world")
-asyncio.run(note.dispatch(important=True, context={"user": "alice"}))
 ```
 
 All handlers for `MyNote` will be called if their filter (if any) passes. Each handler receives the note, the payload dict, and the (possibly user-supplied) context dict.

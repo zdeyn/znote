@@ -14,6 +14,18 @@ _subscriptions: Dict[Type['zNote'], List[Tuple[Handler[Any], Optional[Filter[Any
 class zNote(BaseModel):
     """
     The root message class for znote, based on pydantic's BaseModel.
+
+    Example:
+        >>> from znote import zNote, subscribe
+        >>> class MyNote(zNote):
+        ...     message: str
+        >>> @subscribe(MyNote)
+        ... def handler(note, payload, context):
+        ...     print(note.message)
+        >>> note = MyNote(message="Hello world")
+        >>> import asyncio
+        >>> asyncio.run(note.dispatch())
+        Hello world
     """
 
     async def dispatch(self, *, context: Optional[TContext] = None, **payload: Any) -> None:
