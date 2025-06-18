@@ -7,13 +7,16 @@ authors = [
     { name = "zdeyn", email = "i.am.zdeyn@gmail.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pydantic>=2.0",
+]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
+    "pytest>=8.0",
     "pytest-asyncio>=1.0.0",
 ]
