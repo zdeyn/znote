@@ -56,6 +56,26 @@ All handlers for `MyNote` will be called if their filter (if any) passes. Each h
 - Or as a function: `subscribe(MyNote, filter)(handler)`
 - Handlers receive `(note, payload, context)`
 
+## Subscribing to Ancestor Classes
+
+You can subscribe to a base note class and receive all notes of its subclasses:
+
+```python
+>>> from znote import zNote, subscribe
+>>> class BaseNote(zNote):
+...     pass
+>>> class ChildNote(BaseNote):
+...     pass
+>>> @subscribe(BaseNote)
+... def base_handler(note, payload, context):
+...     print(f"Base handler: {type(note).__name__}, payload={payload}")
+>>> note = ChildNote()
+>>> import asyncio
+>>> asyncio.run(note.dispatch(x=1))
+Base handler: ChildNote, payload={'x': 1}
+
+```
+
 ## Limitations
 
 - No dependency injection or handler return value aggregation is implemented (yet).
