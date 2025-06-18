@@ -17,33 +17,10 @@ znote provides a powerful subscribe/emit system with filtered callbacks, enablin
 pip install znote
 ```
 
-## Example
-
-```python
-from znote import EventBus
-
-# Create an event bus
-bus = EventBus()
-
-# Subscribe to events with filtering
-@bus.subscribe(event_type="user.created", user_type="premium")
-def handle_premium_user_creation(event):
-    print(f"Premium user created: {event.data['username']}")
-
-# Emit events
-bus.emit(
-    event_type="user.created",
-    user_type="premium",
-    data={"username": "alice", "plan": "annual"}
-)
-```
-
 ## Why znote?
 
 znote allows Python developers to implement sophisticated messaging patterns while maintaining clean, decoupled code. Whether you're building a complex application architecture or simply need components to communicate effectively, znote provides the tools to make it happen.
 
-
-# zNote - zdeyn's distributed messaging system for python
 
 ## Mental model
 
@@ -52,7 +29,8 @@ znote allows Python developers to implement sophisticated messaging patterns whi
 Inherit from it as you wish:
 
 ```python
-from znote import zNote, on, replace
+from znote import zNote
+from znote import before, on, after, replace, augment, observe
 
 def GreetSomeone(zNote):
     name : str
