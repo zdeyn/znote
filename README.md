@@ -10,6 +10,8 @@ znote provides a powerful subscribe/emit system with optional filters, enabling 
 - **Filtered Subscriptions**: Handlers can filter on note, payload, and context.
 - **Flexible Handlers**: Both sync and async handlers are supported.
 - **Unified Context**: Each dispatch can carry a user-supplied context dict, shared by all handlers for that dispatch.
+- **Deduplication**: Handlers subscribed to both a parent and child note type are only called once per emission.
+- **Introspectable Emissions**: Emission and Response objects have clear, informative `__repr__` and `__str__` for debugging and interactive use.
 
 ## Installation
 
@@ -36,21 +38,27 @@ pip install znote
 >>> import asyncio
 >>> emission = asyncio.run(note.emit(important=True, context={"user": "alice"}))
 >>> for response in emission:
-...     print(response.result)
-Decorator: Hello world, payload={'important': True}, context={'user': 'alice'}
-Direct: Hello world, payload={'important': True}, context={'user': 'alice'}
-Important note received!
+...     print(response)
+Response from print_handler on MyNote(message='Hello world'): "Decorator: Hello world, payload={'important': True}, context={'user': 'alice'}"
+Response from direct_handler on MyNote(message='Hello world'): "Direct: Hello world, payload={'important': True}, context={'user': 'alice'}"
+Response from important_handler on MyNote(message='Hello world'): 'Important note received!'
 
 ```
 
 All handlers for `MyNote` will be called if their filter (if any) passes. Each handler receives the note, the payload dict, and the (possibly user-supplied) context dict.
+
+**Real-world usage tip:**
+- The `payload` is for the *attachments/entities that go with the note* (e.g. user, files, metadata, etc).
+- The `context` is for *internal storage for parallel processing, scratch-space, or handler coordination* (e.g. tracking which handlers ran, accumulating results, or sharing state between handlers during a single emission).
+- For example, you might pass the user as part of the payload, and use the context to track if a note is 'important' or to accumulate logs during emission.
 
 ## API
 
 ### zNote
 
 - Subclass to define your own message types.
-- Use `await note.dispatch(**payload, context=...)` to emit a note.
+- Use `await note.emit(**payload, context=...)` to emit a note. Returns an `Emission` object for introspection.
+- `repr(note)` and `str(note)` show all fields, e.g. `MyNote(message='hi', count=2)`.
 
 ### subscribe
 
@@ -58,9 +66,15 @@ All handlers for `MyNote` will be called if their filter (if any) passes. Each h
 - Or as a function: `subscribe(MyNote, filter)(handler)`
 - Handlers receive `(note, payload, context)`
 
+### Emission and Response
+
+- `Emission` is iterable and contains a `_Response` for each handler call.
+- `repr(emission)` and `str(emission)` show all handler results and note details.
+- `repr(response)` and `str(response)` show the handler, note, and result.
+
 ## Subscribing to Ancestor Classes
 
-You can subscribe to a base note class and receive all notes of its subclasses:
+You can subscribe to a base note class and receive all notes of its subclasses. Handlers are deduplicated per emission:
 
 ```python
 >>> from znote import zNote, subscribe
@@ -70,13 +84,13 @@ You can subscribe to a base note class and receive all notes of its subclasses:
 ...     pass
 >>> @subscribe(BaseNote)
 ... def base_handler(note, payload, context):
-...     return f"Base handler: {type(note).__name__}, payload={payload}"
+...     return f"Base handler: {repr(note)}, payload={payload}"
 >>> note = ChildNote()
 >>> import asyncio
 >>> emission = asyncio.run(note.emit(x=1))
 >>> for response in emission:
-...     print(response.result)
-Base handler: ChildNote, payload={'x': 1}
+...     print(response)
+Response from base_handler on ChildNote(): "Base handler: ChildNote(), payload={'x': 1}"
 
 ```
 
