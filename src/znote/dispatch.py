@@ -14,8 +14,34 @@ Filter = Callable[[T, TPayload, TContext], bool]
 class Emission:
     """
     Iterable of _Response objects, one per handler called during emit.
+
+    Each _Response contains:
+        - handler: the handler function
+        - note: the note instance
+        - payload: the payload dict
+        - context: the context dict
+        - result: the handler's return value (may be None)
+
+    Example:
+        >>> from znote import zNote, subscribe
+        >>> class MyNote(zNote):
+        ...     x: int
+        >>> @subscribe(MyNote)
+        ... def sync_handler(note, payload, context):
+        ...     return f"sync:{note.x}"
+        >>> @subscribe(MyNote)
+        ... async def async_handler(note, payload, context):
+        ...     return f"async:{note.x}"
+        >>> import asyncio
+        >>> note = MyNote(x=5)
+        >>> emission = asyncio.run(Dispatcher.emit(note))
+        >>> [r.result for r in emission]
+        ['sync:5', 'async:5']
     """
     class _Response:
+        """
+        Represents a single handler call during emission.
+        """
         def __init__(self, handler, note, payload, context, result):
             self.handler = handler
             self.note = note

@@ -18,6 +18,7 @@ def test_znote_creation() -> None:
     assert note.value == 10
 
 def test_hello_world() -> None:
+    """Simple hello world test."""
     assert 1 + 1 == 2
 
 def test_direct_and_decorator_subscription_equivalence() -> None:

@@ -28,16 +28,15 @@ class zNote(BaseModel):
         >>> asyncio.run(note.dispatch())
         Hello world
     """
-
     async def dispatch(self, *, context: Optional[TContext] = None, **payload: Any) -> None:
         """
-        Dispatch this note to subscribed handlers. 
+        Dispatch this note to subscribed handlers.
         Allows user-supplied context, otherwise uses a fresh dict.
         Triggers all subscriptions for this note's class and its ancestors.
         """
         await Dispatcher.dispatch(self, context=context, **payload)
 
-def subscribe(note_type: Type[T], filter: Optional[Filter[T]] = None) -> Callable[[Handler[T]], Handler[T]]:
+def subscribe(note_type: Type[T], _filter: Optional[Filter[T]] = None) -> Callable[[Handler[T]], Handler[T]]:
     """
     A decorator to subscribe a handler to a zNote type or any subclass.
     Ensures type safety: handler will only be called with the correct note type.
@@ -79,5 +78,5 @@ def subscribe(note_type: Type[T], filter: Optional[Filter[T]] = None) -> Callabl
         filtered handler!
         >>> asyncio.run(note.dispatch(ok=False))
     """
-    return Dispatcher.subscribe(note_type, filter)
+    return Dispatcher.subscribe(note_type, _filter)
 

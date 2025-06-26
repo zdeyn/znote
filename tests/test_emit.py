@@ -8,6 +8,7 @@ from znote.dispatch import Dispatcher, Emission
 async def test_emit_collects_all_handler_responses() -> None:
     """
     Emission returns an iterable of _Response objects, one per handler.
+
     >>> class MyNote(zNote):
     ...     x: int
     >>> @subscribe(MyNote)

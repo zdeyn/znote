@@ -5,6 +5,10 @@ from znote import zNote, subscribe
 
 @pytest.mark.asyncio
 async def test_simple_subscription_dispatch() -> None:
+    """
+    Test that a simple subscription works and the callback is called upon dispatch.
+    Uses a mock to verify the callback execution.
+    """
     class MyNote(zNote):
         greeting: str
     mock_callback: MagicMock = MagicMock()
@@ -28,6 +32,11 @@ async def test_simple_subscription_dispatch() -> None:
 
 @pytest.mark.asyncio
 async def test_filtered_subscription() -> None:
+    """
+    Test that a subscription with a filter only triggers the callback when the filter matches.
+    The 'always' handler should be called for every dispatch, and the 'filtered' handler only when the filter matches.
+    The context should be updated independently for each handler call.
+    """
     class MyNote(zNote):
         id: int
     mock_callback: MagicMock = MagicMock()
@@ -67,6 +76,9 @@ async def test_filtered_subscription() -> None:
 
 @pytest.mark.asyncio
 async def test_context_propagation() -> None:
+    """
+    Test that the context is correctly propagated during dispatch.
+    """
     class MyNote(zNote):
         data: str
     mock_callback: MagicMock = MagicMock()
