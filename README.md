@@ -25,16 +25,18 @@ pip install znote
 ...     message: str
 >>> @subscribe(MyNote)
 ... def print_handler(note, payload, context):
-...     print(f"Decorator: {note.message}, payload={payload}, context={context}")
+...     return f"Decorator: {note.message}, payload={payload}, context={context}"
 >>> def direct_handler(note, payload, context):
-...     print(f"Direct: {note.message}, payload={payload}, context={context}")
+...     return f"Direct: {note.message}, payload={payload}, context={context}"
 >>> _ = subscribe(MyNote)(direct_handler)
 >>> @subscribe(MyNote, lambda note, payload, context: payload.get('important', False))
 ... def important_handler(note, payload, context):
-...     print("Important note received!")
+...     return "Important note received!"
 >>> note = MyNote(message="Hello world")
 >>> import asyncio
->>> asyncio.run(note.dispatch(important=True, context={"user": "alice"}))
+>>> emission = asyncio.run(note.emit(important=True, context={"user": "alice"}))
+>>> for response in emission:
+...     print(response.result)
 Decorator: Hello world, payload={'important': True}, context={'user': 'alice'}
 Direct: Hello world, payload={'important': True}, context={'user': 'alice'}
 Important note received!
@@ -68,10 +70,12 @@ You can subscribe to a base note class and receive all notes of its subclasses:
 ...     pass
 >>> @subscribe(BaseNote)
 ... def base_handler(note, payload, context):
-...     print(f"Base handler: {type(note).__name__}, payload={payload}")
+...     return f"Base handler: {type(note).__name__}, payload={payload}"
 >>> note = ChildNote()
 >>> import asyncio
->>> asyncio.run(note.dispatch(x=1))
+>>> emission = asyncio.run(note.emit(x=1))
+>>> for response in emission:
+...     print(response.result)
 Base handler: ChildNote, payload={'x': 1}
 
 ```
