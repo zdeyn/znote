@@ -82,25 +82,17 @@ class Dispatcher:
 
     @classmethod
     async def dispatch(cls, note: 'zNote', *, context: Optional[TContext] = None, **payload: Any) -> None:
-        if context is None:
-            context = {}
-        typed_payload: TPayload = dict(payload)
-        for note_type in type(note).__mro__:
-            if note_type in cls._subscriptions:
-                for handler, filter in cls._subscriptions[note_type]:
-                    typed_handler = cast(Handler[Any], handler)
-                    typed_filter = cast(Optional[Filter[Any]], filter)
-                    if typed_filter is None or typed_filter(note, typed_payload, context):
-                        if asyncio.iscoroutinefunction(typed_handler):
-                            await typed_handler(note, typed_payload, context)
-                        else:
-                            typed_handler(note, typed_payload, context)
+        """
+        Dispatch this note to subscribed handlers. (DEPRECATED: use emit instead)
+        This method is kept for backward compatibility and simply calls emit, discarding results.
+        """
+        await cls.emit(note, context=context, **payload)
 
     @classmethod
     async def emit(cls, note: 'zNote', *, context: Optional[TContext] = None, **payload: Any) -> Emission:
         """
-        Like dispatch, but returns an Emission object of _Response objects for all handler results.
-        Only includes responses where the handler returns a non-None value.
+        Returns an Emission object of _Response objects for all handler calls.
+        Each _Response contains the handler, note, payload, context, and result (may be None).
         """
         if context is None:
             context = {}
@@ -117,12 +109,10 @@ class Dispatcher:
                             async_calls.append((typed_handler, note, typed_payload, context))
                         else:
                             result = typed_handler(note, typed_payload, context)
-                            if result is not None:
-                                sync_responses.append(Emission._Response(typed_handler, note, typed_payload, context, result))
+                            sync_responses.append(Emission._Response(typed_handler, note, typed_payload, context, result))
         async_responses = []
         if async_calls:
             results = await asyncio.gather(*(h(n, p, c) for h, n, p, c in async_calls))
             for (handler, note, payload, context), result in zip(async_calls, results):
-                if result is not None:
-                    async_responses.append(Emission._Response(handler, note, payload, context, result))
+                async_responses.append(Emission._Response(handler, note, payload, context, result))
         return Emission(sync_responses + async_responses)
