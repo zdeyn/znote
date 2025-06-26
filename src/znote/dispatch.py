@@ -24,6 +24,15 @@ class Dispatcher:
     _subscriptions: Dict[Type['zNote'], List[Tuple[Handler[Any], Optional[Filter[Any]]]]] = {}
 
     @classmethod
+    def subscribe(cls, note_type: Type[T], filter: Optional[Filter[T]] = None) -> Callable[[Handler[T]], Handler[T]]:
+        def decorator(func: Handler[T]) -> Handler[T]:
+            if note_type not in cls._subscriptions:
+                cls._subscriptions[note_type] = []
+            cls._subscriptions[note_type].append((func, filter))  # type: ignore
+            return func
+        return decorator
+
+    @classmethod
     async def dispatch(cls, note: 'zNote', *, context: Optional[TContext] = None, **payload: Any) -> None:
         if context is None:
             context = {}
@@ -40,10 +49,26 @@ class Dispatcher:
                             typed_handler(note, typed_payload, context)
 
     @classmethod
-    def subscribe(cls, note_type: Type[T], filter: Optional[Filter[T]] = None) -> Callable[[Handler[T]], Handler[T]]:
-        def decorator(func: Handler[T]) -> Handler[T]:
-            if note_type not in cls._subscriptions:
-                cls._subscriptions[note_type] = []
-            cls._subscriptions[note_type].append((func, filter))  # type: ignore
-            return func
-        return decorator
+    async def emit(cls, note: 'zNote', *, context: Optional[TContext] = None, **payload: Any) -> List[Any]:
+        """
+        Like dispatch, but collects and returns all handler results.
+        Async handlers are awaited in bulk; sync handlers are called while async ones are running.
+        """
+        if context is None:
+            context = {}
+        typed_payload: TPayload = dict(payload)
+        async_calls = []
+        results = []
+        for note_type in type(note).__mro__:
+            if note_type in cls._subscriptions:
+                for handler, filter in cls._subscriptions[note_type]:
+                    typed_handler = cast(Handler[Any], handler)
+                    typed_filter = cast(Optional[Filter[Any]], filter)
+                    if typed_filter is None or typed_filter(note, typed_payload, context):
+                        if asyncio.iscoroutinefunction(typed_handler):
+                            async_calls.append(typed_handler(note, typed_payload, context))
+                        else:
+                            results.append(typed_handler(note, typed_payload, context))
+        if async_calls:
+            results.extend(await asyncio.gather(*async_calls))
+        return results
