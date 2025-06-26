@@ -80,7 +80,7 @@ Base handler: ChildNote, payload={'x': 1}
 
 ```
 
-## Limitations
+## Comments
 
-- No dependency injection or handler return value aggregation is implemented (yet).
+- No dependency injection is implemented (yet).
 - Context is per-dispatch and shared by all handlers for that dispatch.
