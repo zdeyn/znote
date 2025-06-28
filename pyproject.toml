@@ -1,6 +1,6 @@
 [project]
 name = "znote"
-version = "0.3.0"
+version = "0.3.1"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -9,7 +9,6 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2.0",
-    "pytest-doctestplus>=1.4.0",
 ]
 
 [build-system]
@@ -20,6 +19,7 @@ build-backend = "hatchling.build"
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=1.0.0",
+    "pytest-doctestplus>=1.4.0",
 ]
 
 [tool.pytest.ini_options]
