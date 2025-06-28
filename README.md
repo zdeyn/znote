@@ -23,29 +23,30 @@ pip install znote
 
 ```python
 >>> from znote import zNote, subscribe
+>>> import asyncio
 >>> class MyNote(zNote):
 ...     message: str
 >>> @subscribe(MyNote)
-... def print_handler(note, payload, context):
-...     return f"Decorator: {note.message}, payload={payload}, context={context}"
->>> def direct_handler(note, payload, context):
-...     return f"Direct: {note.message}, payload={payload}, context={context}"
->>> _ = subscribe(MyNote)(direct_handler)
->>> @subscribe(MyNote, lambda note, payload, context: payload.get('important', False))
-... def important_handler(note, payload, context):
-...     return "Important note received!"
->>> note = MyNote(message="Hello world")
->>> import asyncio
->>> emission = asyncio.run(note.emit(important=True, context={"user": "alice"}))
->>> for response in emission:
+... def everything_handler(note):
+...     return f"E: {note.message}"
+>>> @subscribe(MyNote, lambda n: 'important' in n.message.lower())
+... def important_handler(note):
+...     return f"I: {note.message}"
+>>> note_a = MyNote(message="Hello, World!")
+>>> emission_a = asyncio.run(note_a.emit())
+>>> for response in emission_a:
 ...     print(response)
-Response from print_handler on MyNote(message='Hello world'): "Decorator: Hello world, payload={'important': True}, context={'user': 'alice'}"
-Response from direct_handler on MyNote(message='Hello world'): "Direct: Hello world, payload={'important': True}, context={'user': 'alice'}"
-Response from important_handler on MyNote(message='Hello world'): 'Important note received!'
+Response from everything_handler on MyNote(message='Hello, World!'): 'E: Hello, World!'
+>>> note_b = MyNote(message="Important Message!")
+>>> emission_b = asyncio.run(note_b.emit())
+>>> for response in emission_b:
+...     print(response)
+Response from everything_handler on MyNote(message='Important Message!'): 'E: Important Message!'
+Response from important_handler on MyNote(message='Important Message!'): 'I: Important Message!'
 
 ```
 
-All handlers for `MyNote` will be called if their filter (if any) passes. Each handler receives the note, the payload dict, and the (possibly user-supplied) context dict.
+All handlers for `MyNote` will be called if their filter (if any) passes. Each handler receives the note instance. You may also define handlers that accept `(note, payload)` or `(note, payload, context)` if you need those values.
 
 **Real-world usage tip:**
 - The `payload` is for the *attachments/entities that go with the note* (e.g. user, files, metadata, etc).

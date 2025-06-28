@@ -1,15 +1,15 @@
-from typing import Dict, Type, Callable, List, Tuple, Optional, Any, TypeVar, Generic, cast
+from typing import Dict, Type, Callable, List, Tuple, Optional
 import asyncio
 from typing import TYPE_CHECKING
+import inspect
 
-if TYPE_CHECKING:
-    from .core import zNote
-
-T = TypeVar('T', bound='zNote')
+# Handler and Filter type hints for type checkers: allow 1-3 arguments
+from typing import Callable, Any, Optional, Type, List, Tuple, Dict
+Handler = Callable[..., Any]
+Filter = Callable[..., bool]
 TContext = Dict[str, Any]
 TPayload = Dict[str, Any]
-Handler = Callable[[T, TPayload, TContext], Any]
-Filter = Callable[[T, TPayload, TContext], bool]
+T = Any
 
 class Emission:
     """
@@ -76,24 +76,24 @@ class Dispatcher:
         """
         For internal use only: represents a handler/filter pair for a note type.
         """
-        def __init__(self, handler: Handler[Any], filter: Optional[Filter[Any]] = None):
+        def __init__(self, handler: Handler, filter: Optional[Filter] = None):
             self.handler = handler
             self.filter = filter
 
     # Subscription registry
-    _subscriptions: Dict[Type['zNote'], List[Tuple[Handler[Any], Optional[Filter[Any]]]]] = {}
+    _subscriptions: Dict[Type[Any], List[Tuple[Handler, Optional[Filter]]]] = {}
 
     @classmethod
-    def subscribe(cls, note_type: Type[T], filter: Optional[Filter[T]] = None) -> Callable[[Handler[T]], Handler[T]]:
-        def decorator(func: Handler[T]) -> Handler[T]:
+    def subscribe(cls, note_type: Type[Any], filter: Optional[Filter] = None) -> Callable[[Handler], Handler]:
+        def decorator(func: Handler) -> Handler:
             if note_type not in cls._subscriptions:
                 cls._subscriptions[note_type] = []
-            cls._subscriptions[note_type].append((func, filter))  # type: ignore
+            cls._subscriptions[note_type].append((func, filter))
             return func
         return decorator
 
     @classmethod
-    async def emit(cls, note: 'zNote', *, context: Optional[TContext] = None, **payload: Any) -> Emission:
+    async def emit(cls, note: Any, *, context: Optional[Dict[str, Any]] = None, **payload: Any) -> Emission:
         """
         Returns an Emission object of _Response objects for all handler calls.
         Each _Response contains the handler, note, payload, context, and result (may be None).
@@ -144,7 +144,7 @@ class Dispatcher:
         """
         if context is None:
             context = {}
-        typed_payload: TPayload = dict(payload)
+        typed_payload: Dict[str, Any] = dict(payload)
         async_calls = []
         sync_responses = []
         seen_handlers = set()
@@ -154,19 +154,27 @@ class Dispatcher:
                     if handler in seen_handlers:
                         continue
                     seen_handlers.add(handler)
-                    typed_handler = cast(Handler[Any], handler)
-                    typed_filter = cast(Optional[Filter[Any]], filter)
-                    if typed_filter is None or typed_filter(note, typed_payload, context):
-                        if asyncio.iscoroutinefunction(typed_handler):
-                            async_calls.append((typed_handler, note, typed_payload, context))
+                    # Prepare args for handler/filter
+                    handler_args = (note, typed_payload, context)
+                    filter_args = (note, typed_payload, context) if filter is not None else None
+                    # Use inspect to determine how many args to pass
+                    def get_args_to_pass(fn, all_args):
+                        sig = inspect.signature(fn)
+                        n = len(sig.parameters)
+                        # Defensive: always return a tuple of the right length
+                        return tuple(all_args[:n])
+                    # Check filter
+                    if filter is None or filter(*get_args_to_pass(filter, filter_args)):
+                        if asyncio.iscoroutinefunction(handler):
+                            async_calls.append((handler, get_args_to_pass(handler, handler_args)))
                         else:
-                            result = typed_handler(note, typed_payload, context)
-                            sync_responses.append(Emission._Response(typed_handler, note, typed_payload, context, result))
+                            result = handler(*get_args_to_pass(handler, handler_args))
+                            sync_responses.append(Emission._Response(handler, note, typed_payload, context, result))
         async_responses = []
         if async_calls:
-            results = await asyncio.gather(*(h(n, p, c) for h, n, p, c in async_calls))
-            for (handler, note, payload, context), result in zip(async_calls, results):
-                async_responses.append(Emission._Response(handler, note, payload, context, result))
+            results = await asyncio.gather(*(h(*args) for h, args in async_calls))
+            for (handler, args), result in zip(async_calls, results):
+                async_responses.append(Emission._Response(handler, args[0], args[1] if len(args) > 1 else {}, args[2] if len(args) > 2 else {}, result))
         return Emission(sync_responses + async_responses)
 
     @classmethod

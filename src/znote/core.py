@@ -5,11 +5,12 @@ from typing import Dict, Type, Callable, List, Tuple, Optional, Any, TypeVar, Ge
 T = TypeVar('T', bound='zNote')
 TContext = Dict[str, Any]
 TPayload = Dict[str, Any]
-Handler = Callable[[T, TPayload, TContext], Any]
-Filter = Callable[[T, TPayload, TContext], bool]
-
+# Handler and Filter type hints for type checkers: allow 1-3 arguments
+from typing import Callable, Any, Optional, Type, List, Tuple, Dict
+Handler = Callable[..., Any]
+Filter = Callable[..., bool]
 # Subscription registry
-_subscriptions: Dict[Type['zNote'], List[Tuple[Handler[Any], Optional[Filter[Any]]]]] = {}
+_subscriptions: Dict[Type[Any], List[Tuple[Handler, Optional[Filter]]]] = {}
 
 class zNote(BaseModel):
     """
@@ -20,16 +21,54 @@ class zNote(BaseModel):
         >>> class MyNote(zNote):
         ...     message: str
         >>> @subscribe(MyNote)
-        ... def handler(note, payload, context):
-        ...     # payload is for attachments/entities (e.g. user, files, metadata)
-        ...     # context is for internal scratch-space, parallel processing, etc
-        ...     return f"{note.message} (user={payload.get('user')}, important={context.get('important')})"
+        ... def handler(note):
+        ...     return f"note only: {note.message}"
+        >>> @subscribe(MyNote)
+        ... def handler2(note, payload):
+        ...     return f"payload: {payload.get('user', 'none')}"
+        >>> @subscribe(MyNote)
+        ... def handler3(note, payload, context):
+        ...     return f"context: {context.get('flag', False)}"
         >>> note = MyNote(message="Hello world")
         >>> import asyncio
-        >>> emission = asyncio.run(note.emit(user='alice', context={'important': True}))
+        >>> emission = asyncio.run(note.emit(user='alice', context={'flag': True}))
         >>> for response in emission:
-        ...     print(response)
-        Response from handler on MyNote(message='Hello world'): 'Hello world (user=alice, important=True)'
+        ...     print(response.result)
+        note only: Hello world
+        payload: alice
+        context: True
+
+    Example (function):
+        >>> from znote import zNote, subscribe
+        >>> class MyNote(zNote):
+        ...     message: str
+        >>> def handler(note):
+        ...     return note.message
+        >>> _ = subscribe(MyNote)(handler)
+        >>> note = MyNote(message="yo")
+        >>> import asyncio
+        >>> emission = asyncio.run(note.emit())
+        >>> for response in emission:
+        ...     print(response.result)
+        yo
+
+    Example (with filter):
+        >>> from znote import zNote, subscribe
+        >>> class MyNote(zNote):
+        ...     message: str
+        >>> @subscribe(MyNote, lambda note: note.message == 'test')
+        ... def filtered(note):
+        ...     return "filtered handler!"
+        >>> note = MyNote(message="test")
+        >>> import asyncio
+        >>> emission = asyncio.run(note.emit())
+        >>> for response in emission:
+        ...     print(response.result)
+        filtered handler!
+        >>> note2 = MyNote(message="notest")
+        >>> emission = asyncio.run(note2.emit())
+        >>> for response in emission:
+        ...     print(response.result)
     """
     async def emit(self, *, context: Optional[TContext] = None, **payload: Any) -> Any:
         """
@@ -48,7 +87,7 @@ class zNote(BaseModel):
         # User-friendly: just call __repr__
         return self.__repr__()
 
-def subscribe(note_type: Type[T], _filter: Optional[Filter[T]] = None) -> Callable[[Handler[T]], Handler[T]]:
+def subscribe(note_type: type, _filter: Optional[Filter] = None) -> Callable[[Handler], Handler]:
     """
     A decorator to subscribe a handler to a zNote type or any subclass.
     Ensures type safety: handler will only be called with the correct note type.
@@ -58,7 +97,7 @@ def subscribe(note_type: Type[T], _filter: Optional[Filter[T]] = None) -> Callab
         >>> class MyNote(zNote):
         ...     message: str
         >>> @subscribe(MyNote)
-        ... def handler(note, payload, context):
+        ... def handler(note):
         ...     return note.message
         >>> note = MyNote(message="hi")
         >>> import asyncio
@@ -71,7 +110,7 @@ def subscribe(note_type: Type[T], _filter: Optional[Filter[T]] = None) -> Callab
         >>> from znote import zNote, subscribe
         >>> class MyNote(zNote):
         ...     message: str
-        >>> def handler(note, payload, context):
+        >>> def handler(note):
         ...     return note.message
         >>> _ = subscribe(MyNote)(handler)
         >>> note = MyNote(message="yo")
@@ -85,16 +124,17 @@ def subscribe(note_type: Type[T], _filter: Optional[Filter[T]] = None) -> Callab
         >>> from znote import zNote, subscribe
         >>> class MyNote(zNote):
         ...     message: str
-        >>> @subscribe(MyNote, lambda note, payload, context: payload.get('ok', False))
-        ... def filtered(note, payload, context):
+        >>> @subscribe(MyNote, lambda note: note.message == 'test')
+        ... def filtered(note):
         ...     return "filtered handler!"
         >>> note = MyNote(message="test")
         >>> import asyncio
-        >>> emission = asyncio.run(note.emit(ok=True))
+        >>> emission = asyncio.run(note.emit())
         >>> for response in emission:
         ...     print(response.result)
         filtered handler!
-        >>> emission = asyncio.run(note.emit(ok=False))
+        >>> note2 = MyNote(message="notest")
+        >>> emission = asyncio.run(note2.emit())
         >>> for response in emission:
         ...     print(response.result)
     """
