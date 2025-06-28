@@ -36,7 +36,7 @@ class Emission:
         >>> emission = asyncio.run(Dispatcher.emit(note, user='bob', context={'flag': True}))
         >>> for r in emission:
         ...     print(r)
-        Response from sync_handler on MyNote(x=5): 'sync:5, user=bob, flag=True'
+        Response from `sync_handler` to MyNote(x=5): 'sync:5, user=bob, flag=True'
     """
     class _Response:
         """
@@ -54,7 +54,7 @@ class Emission:
             return (f"<Response handler={self.handler.__name__} note={note_str} result={self.result!r}>")
         def __str__(self):
             note_str = repr(self.note)
-            return (f"Response from {self.handler.__name__} on {note_str}: {self.result!r}")
+            return (f"Response from `{self.handler.__name__}` to {note_str}: {self.result!r}")
 
     def __init__(self, responses):
         self._responses = responses
@@ -112,7 +112,7 @@ class Dispatcher:
             >>> emission = asyncio.run(Dispatcher.emit(note, user='bob', context={'flag': True}))
             >>> for r in emission:
             ...     print(r)
-            Response from sync_handler on MyNote(x=5): 'sync:5, user=bob, flag=True'
+            Response from `sync_handler` to MyNote(x=5): 'sync:5, user=bob, flag=True'
 
         Filtering and payload:
             >>> class MyNote(zNote):
@@ -127,12 +127,12 @@ class Dispatcher:
             >>> emission = asyncio.run(Dispatcher.emit(note, ok=True))
             >>> for r in emission:
             ...     print(r)
-            Response from sync_handler on MyNote(y=7): 'sync:7:True'
-            Response from async_handler on MyNote(y=7): 'async:7'
+            Response from `sync_handler` to MyNote(y=7): 'sync:7:True'
+            Response from `async_handler` to MyNote(y=7): 'async:7'
             >>> emission2 = asyncio.run(Dispatcher.emit(note, ok=False))
             >>> for r in emission2:
             ...     print(r)
-            Response from async_handler on MyNote(y=7): 'async:7'
+            Response from `async_handler` to MyNote(y=7): 'async:7'
 
         No handlers:
             >>> class MyNote(zNote):

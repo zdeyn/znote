@@ -36,13 +36,13 @@ pip install znote
 >>> emission_a = asyncio.run(note_a.emit())
 >>> for response in emission_a:
 ...     print(response)
-Response from everything_handler on MyNote(message='Hello, World!'): 'E: Hello, World!'
+Response from `everything_handler` to MyNote(message='Hello, World!'): 'E: Hello, World!'
 >>> note_b = MyNote(message="Important Message!")
 >>> emission_b = asyncio.run(note_b.emit())
 >>> for response in emission_b:
 ...     print(response)
-Response from everything_handler on MyNote(message='Important Message!'): 'E: Important Message!'
-Response from important_handler on MyNote(message='Important Message!'): 'I: Important Message!'
+Response from `everything_handler` to MyNote(message='Important Message!'): 'E: Important Message!'
+Response from `important_handler` to MyNote(message='Important Message!'): 'I: Important Message!'
 
 ```
 
@@ -91,7 +91,7 @@ You can subscribe to a base note class and receive all notes of its subclasses. 
 >>> emission = asyncio.run(note.emit(x=1))
 >>> for response in emission:
 ...     print(response)
-Response from base_handler on ChildNote(): "Base handler: ChildNote(), payload={'x': 1}"
+Response from `base_handler` to ChildNote(): "Base handler: ChildNote(), payload={'x': 1}"
 
 ```
 

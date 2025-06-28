@@ -26,16 +26,18 @@ def test_repr_str_note_emission_response():
     assert "user=bob" in emission_repr
     assert "flag=True" in emission_repr
     # Now expect the new format with note details in the string
-    assert "Response from handler on MyNote(foo=42, bar='baz'): 'handled 42 baz, user=bob, flag=True'" in emission_str
+    assert "Response from `handler` to MyNote(foo=42, bar='baz'): 'handled 42 baz, user=bob, flag=True'" in emission_str
     # Test Response __repr__ and __str__
     response = emission[0]
     response_repr = repr(response)
     response_str = str(response)
     assert response_repr.startswith("<Response handler=handler note=MyNote(foo=42, bar='baz') result='handled 42 baz, user=bob, flag=True'")
-    assert response_str == "Response from handler on MyNote(foo=42, bar='baz'): 'handled 42 baz, user=bob, flag=True'"
+    assert response_str == "Response from `handler` to MyNote(foo=42, bar='baz'): 'handled 42 baz, user=bob, flag=True'"
     # Print for visual inspection
     print("NOTE __repr__:", note_repr)
     print("EMISSION __repr__:", emission_repr)
     print("RESPONSE __repr__:", response_repr)
     print("EMISSION __str__:\n", emission_str)
     print("RESPONSE __str__:", response_str)
+    # In test_emit_repr_str.py, update expected string for __str__
+    # Example: 'Response from print_handler on MyNote(message=...)' -> 'Response from `print_handler` to MyNote(message=...)'
